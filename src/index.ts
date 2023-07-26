@@ -4,6 +4,11 @@ import { isString } from 'narrowing';
 import path from 'path';
 import { PluginOption } from 'vite';
 
+interface parameters {
+  crates: string[] | string,
+  moduleCrates?: string[] | string
+}
+
 /**
  *   return a Vite plugin for handling wasm-pack crate
  *
@@ -24,20 +29,18 @@ import { PluginOption } from 'vite';
  * @param crates local crates paths, if you only use crates from npm, leave an empty array here.
  * @param moduleCrates crates names from npm
  */
-function vitePluginWasmPack(
-  crates: string[] | string,
-  moduleCrates?: string[] | string
-): PluginOption {
+function vitePluginWasmPack(args: parameters): PluginOption {
   const prefix = '@vite-plugin-wasm-pack@';
   const pkg = 'pkg'; // default folder of wasm-pack module
   let config_base: string;
   let config_assetsDir: string;
-  const cratePaths: string[] = isString(crates) ? [crates] : crates;
-  const modulePaths: string[] = !moduleCrates
+  const cratePaths: string[] = isString(args.crates) ? [args.crates] : args.crates;
+  const modulePaths: string[] = !args.moduleCrates
     ? []
-    : isString(moduleCrates)
-    ? [moduleCrates]
-    : moduleCrates;
+    : isString(args.moduleCrates)
+      ? [args.moduleCrates]
+      : args.moduleCrates;
+
   // from ../../my-crate  ->  my_crate_bg.wasm
   const wasmFilename = (cratePath: string) => {
     return path.basename(cratePath).replace(/\-/g, '_') + '_bg.wasm';
@@ -45,6 +48,7 @@ function vitePluginWasmPack(
   type CrateType = { path: string; isNodeModule: boolean };
   // wasmfileName : CrateType
   const wasmMap = new Map<string, CrateType>();
+
   // 'my_crate_bg.wasm': {path:'../../my_crate/pkg/my_crate_bg.wasm', isNodeModule: false}
   cratePaths.forEach((cratePath) => {
     const wasmFile = wasmFilename(cratePath);
@@ -53,6 +57,7 @@ function vitePluginWasmPack(
       isNodeModule: false
     });
   });
+  
   // 'my_crate_bg.wasm': { path: 'node_modules/my_crate/my_crate_bg.wasm', isNodeModule: true }
   modulePaths.forEach((cratePath) => {
     const wasmFile = wasmFilename(cratePath);
